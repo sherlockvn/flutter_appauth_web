@@ -2,16 +2,19 @@ library flutter_appauth_web;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
 import 'dart:math';
 import 'dart:typed_data';
-import 'dart:html' as html;
+import 'package:web/web.dart';
 import 'dart:core';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:flutter_appauth_platform_interface/flutter_appauth_platform_interface.dart';
 import 'package:pointycastle/digests/sha256.dart';
+import 'package:web/web.dart' as html;
 
 /// A Calculator.
 class AppAuthWebPlugin extends FlutterAppAuthPlatform {
@@ -70,11 +73,11 @@ class AppAuthWebPlugin extends FlutterAppAuthPlatform {
     // check if we already have login-callback data
     final authUrl = html.window.sessionStorage[_AUTH_RESPONSE_INFO];
     if (authUrl != null && authUrl.isNotEmpty) {
-      html.window.sessionStorage.remove(_AUTH_RESPONSE_INFO);
+      html.window.sessionStorage.removeItem(_AUTH_RESPONSE_INFO);
 
       codeVerifier = html.window.sessionStorage[_CODE_VERIFIER_STORAGE];
       if (codeVerifier == null || codeVerifier.isEmpty) return null;
-      html.window.sessionStorage.remove(_CODE_VERIFIER_STORAGE);
+      html.window.sessionStorage.removeItem(_CODE_VERIFIER_STORAGE);
 
       return processLoginResult(authUrl, codeVerifier);
     }
@@ -222,8 +225,8 @@ class AppAuthWebPlugin extends FlutterAppAuthPlatform {
   Future<String> openPopUp(String url, String name, int width, int height, bool center, {String? additionalOptions}) async {
     var options = 'width=$width,height=$height,toolbar=no,location=no,directories=no,status=no,menubar=no,copyhistory=no';
     if (center) {
-      final top = (html.window.outerHeight - height) / 2 + (html.window.screen?.available.top ?? 0);
-      final left = (html.window.outerWidth - width) / 2 + (html.window.screen?.available.left ?? 0);
+      final top = (html.window.outerHeight - height) / 2;
+      final left = (html.window.outerWidth - width) / 2 ;
 
       options += 'top=$top,left=$left';
     }
@@ -237,13 +240,13 @@ class AppAuthWebPlugin extends FlutterAppAuthPlatform {
       final url = event.data.toString();
       print(url);
       c.complete(url);
-      child.close();
+      child?.close();
     });
 
     //This handles the user closing the window without a response
     while (!c.isCompleted) {
       await Future.delayed(Duration(milliseconds: 500));
-      if ((child.closed ?? false) && !c.isCompleted) c.completeError(StateError('User Closed'));
+      if ((child?.closed ?? false) && !c.isCompleted) c.completeError(StateError('User Closed'));
 
       if (c.isCompleted) break;
     }
@@ -252,7 +255,7 @@ class AppAuthWebPlugin extends FlutterAppAuthPlatform {
   }
 
   Future<String> openIframe(String url, String name) async {
-    final child = html.IFrameElement();
+    final child = html.HTMLIFrameElement();
     child.name = name;
     child.src = url;
     child.height = '10';
@@ -268,7 +271,7 @@ class AppAuthWebPlugin extends FlutterAppAuthPlatform {
       final url = event.data.toString();
       print(url);
       c.complete(url);
-      html.querySelector("body")?.children.remove(child);
+      html.querySelector("body")?.children.delete(child);
     });
 
     return c.future;
